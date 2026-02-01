@@ -1,6 +1,7 @@
 import pygame
 import sys
 import random
+import asyncio
 
 # Inicialización
 pygame.init()
@@ -8,7 +9,7 @@ WIDTH, HEIGHT = 900, 500
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Para mi querida Beako 🌻")
 
-# --- DEFINICIÓN DE FUENTES (CORRECCIÓN DE ERROR) ---
+# --- DEFINICIÓN DE FUENTES ---
 try:
     font = pygame.font.SysFont("arial", 24, bold=True)
     titulo_font = pygame.font.SysFont("arial", 50, bold=True)
@@ -45,7 +46,6 @@ imgs_fijas = {
 # --- SONIDOS ---
 try:
     sonido_clic = pygame.mixer.Sound("clic.wav")
-    # Si tu archivo se llama fatality.mp3, cámbialo aquí
     sonido_sorpresa = pygame.mixer.Sound("fatality.mp3") 
 except:
     sonido_clic = sonido_sorpresa = None
@@ -74,101 +74,98 @@ guion = [
 final_si = [("cedric", "¡Espera, ¿real?! ¡Wowser, gracias! ❤️", "cedric2"), ("cedric", "Espero que te haya sacado una sonrisa, Beako.", "cedric1")]
 final_no = [("cedric", "Entiendo... bueno, ¡al menos el código no falló! jaja", "cedric3"), ("cedric", "Gracias por jugar de todas formas.", "cedric1")]
 
-# Estados
-estado = "INICIO"; indice = 0; indice_final = 0
-esperando_respuesta = False; resultado_final = ""
-pygame.mouse.set_visible(False) # Cursor oculto para usar el personalizado
+# --- FUNCIÓN PRINCIPAL ASÍNCRONA ---
+async def main():
+    estado = "INICIO"; indice = 0; indice_final = 0
+    esperando_respuesta = False; resultado_final = ""
+    pygame.mouse.set_visible(False)
+    clock = pygame.time.Clock()
 
-# --- BUCLE PRINCIPAL ---
-while True:
-    mouse_pos = pygame.mouse.get_pos()
-    btn_start = pygame.Rect(WIDTH//2 - 75, 380, 150, 50)
-    btn_si = pygame.Rect(300, 250, 120, 50)
-    btn_no = pygame.Rect(480, 250, 120, 50)
-    btn_reinicio = pygame.Rect(WIDTH//2 - 100, 420, 200, 45)
+    while True:
+        mouse_pos = pygame.mouse.get_pos()
+        btn_start = pygame.Rect(WIDTH//2 - 75, 380, 150, 50)
+        btn_si = pygame.Rect(300, 250, 120, 50)
+        btn_no = pygame.Rect(480, 250, 120, 50)
+        btn_reinicio = pygame.Rect(WIDTH//2 - 100, 420, 200, 45)
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT: pygame.quit(); sys.exit()
-        
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if estado == "INICIO" and btn_start.collidepoint(mouse_pos):
-                if sonido_clic: sonido_clic.play()
-                estado = "JUEGO"
-            
-            elif estado == "JUEGO":
-                if esperando_respuesta:
-                    if btn_si.collidepoint(mouse_pos):
-                        if sonido_clic: sonido_clic.play()
-                        estado = "DIALOGO_FINAL"; resultado_final = "SI"
-                    elif btn_no.collidepoint(mouse_pos):
-                        pygame.mixer.music.pause() # DRAMA: Pausa música
-                        if sonido_sorpresa: sonido_sorpresa.play() # Sonido sorpresa
-                        estado = "DIALOGO_FINAL"; resultado_final = "NO"
-                else:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if estado == "INICIO" and btn_start.collidepoint(mouse_pos):
                     if sonido_clic: sonido_clic.play()
-                    if indice < len(guion) - 1:
-                        indice += 1
-                        if guion[indice][3]: esperando_respuesta = True
-            
-            elif estado == "DIALOGO_FINAL":
-                lista = final_si if resultado_final == "SI" else final_no
-                if indice_final < len(lista) - 1: indice_final += 1
-                else: estado = "PANTALLA_CIERRE"
+                    estado = "JUEGO"
+                
+                elif estado == "JUEGO":
+                    if esperando_respuesta:
+                        if btn_si.collidepoint(mouse_pos):
+                            if sonido_clic: sonido_clic.play()
+                            estado = "DIALOGO_FINAL"; resultado_final = "SI"
+                        elif btn_no.collidepoint(mouse_pos):
+                            pygame.mixer.music.pause()
+                            if sonido_sorpresa: sonido_sorpresa.play()
+                            estado = "DIALOGO_FINAL"; resultado_final = "NO"
+                    else:
+                        if sonido_clic: sonido_clic.play()
+                        if indice < len(guion) - 1:
+                            indice += 1
+                            if guion[indice][3]: esperando_respuesta = True
+                
+                elif estado == "DIALOGO_FINAL":
+                    lista = final_si if resultado_final == "SI" else final_no
+                    if indice_final < len(lista) - 1: indice_final += 1
+                    else: estado = "PANTALLA_CIERRE"
 
-            elif estado == "PANTALLA_CIERRE":
-                if btn_reinicio.collidepoint(mouse_pos):
-                    pygame.mixer.music.unpause() # Volver a la normalidad
-                    if not pygame.mixer.music.get_busy(): pygame.mixer.music.play(-1)
-                    estado = "INICIO"; indice = 0; indice_final = 0
-                    esperando_respuesta = False; resultado_final = ""
+                elif estado == "PANTALLA_CIERRE":
+                    if btn_reinicio.collidepoint(mouse_pos):
+                        pygame.mixer.music.unpause()
+                        if not pygame.mixer.music.get_busy(): pygame.mixer.music.play(-1)
+                        estado = "INICIO"; indice = 0; indice_final = 0
+                        esperando_respuesta = False; resultado_final = ""
 
-    # DIBUJO
-    screen.fill((15, 10, 25))
-    
-    # Partículas
-    for p in particulas:
-        p[1] += p[2]
-        if p[1] > HEIGHT: p[1] = -20; p[0] = random.randint(0, WIDTH)
-        screen.blit(p_font.render(p[3], True, (255,255,255)), (p[0], p[1]))
+        # DIBUJO
+        screen.fill((15, 10, 25))
+        for p in particulas:
+            p[1] += p[2]
+            if p[1] > HEIGHT: p[1] = -20; p[0] = random.randint(0, WIDTH)
+            screen.blit(p_font.render(p[3], True, (255,255,255)), (p[0], p[1]))
 
-    if estado == "INICIO":
-        if imgs_fijas["corazon_portada"]: screen.blit(imgs_fijas["corazon_portada"], (WIDTH//2 - 175, 40))
-        pygame.draw.rect(screen, (200, 40, 80), btn_start, border_radius=20)
-        screen.blit(font.render("START", True, (255, 255, 255)), (WIDTH//2 - 38, 392))
+        if estado == "INICIO":
+            if imgs_fijas["corazon_portada"]: screen.blit(imgs_fijas["corazon_portada"], (WIDTH//2 - 175, 40))
+            pygame.draw.rect(screen, (200, 40, 80), btn_start, border_radius=20)
+            screen.blit(font.render("START", True, (255, 255, 255)), (WIDTH//2 - 38, 392))
 
-    elif estado in ["JUEGO", "DIALOGO_FINAL"]:
-        screen.blit(imgs_fijas["fondo"], (0, 0))
-        lista = guion if estado == "JUEGO" else (final_si if resultado_final == "SI" else final_no)
-        idx = indice if estado == "JUEGO" else indice_final
-        pj, txt, img_n = lista[idx][:3]
-        
-        img_actual = cargar_img(img_n)
-        if img_actual: screen.blit(img_actual, (120 if pj == "cedric" else 500, 70))
+        elif estado in ["JUEGO", "DIALOGO_FINAL"]:
+            if imgs_fijas["fondo"]: screen.blit(imgs_fijas["fondo"], (0, 0))
+            lista = guion if estado == "JUEGO" else (final_si if resultado_final == "SI" else final_no)
+            idx = indice if estado == "JUEGO" else indice_final
+            pj, txt, img_n = lista[idx][:3]
+            img_actual = cargar_img(img_n)
+            if img_actual: screen.blit(img_actual, (120 if pj == "cedric" else 500, 70))
+            pygame.draw.rect(screen, (0, 0, 0, 230), (50, 350, 800, 120), border_radius=15)
+            color_nom = (255, 215, 0) if pj == "cedric" else (255, 105, 180)
+            screen.blit(font.render(pj.upper(), True, color_nom), (75, 365))
+            screen.blit(font.render(txt, True, (255, 255, 255)), (75, 410))
+            if esperando_respuesta and estado == "JUEGO":
+                pygame.draw.rect(screen, (50, 200, 50), btn_si, border_radius=12)
+                pygame.draw.rect(screen, (200, 50, 50), btn_no, border_radius=12)
+                screen.blit(font.render("SÍ", True, (255,255,255)), (345, 260))
+                screen.blit(font.render("NO", True, (255,255,255)), (520, 260))
 
-        pygame.draw.rect(screen, (0, 0, 0, 230), (50, 350, 800, 120), border_radius=15)
-        color_nom = (255, 215, 0) if pj == "cedric" else (255, 105, 180)
-        screen.blit(font.render(pj.upper(), True, color_nom), (75, 365))
-        screen.blit(font.render(txt, True, (255, 255, 255)), (75, 410))
+        elif estado == "PANTALLA_CIERRE":
+            screen.blit(titulo_font.render("FINAL", True, (255, 215, 0)), (WIDTH//2 - 70, 30))
+            img_final = imgs_fijas["meowl"] if resultado_final == "SI" else imgs_fijas["fatality_img"]
+            if img_final: screen.blit(img_final, (WIDTH//2 - 150, 100))
+            pygame.draw.rect(screen, (60, 60, 180), btn_reinicio, border_radius=15)
+            screen.blit(font.render("REINICIAR", True, (255, 255, 255)), (WIDTH//2 - 55, 430))
 
-        if esperando_respuesta and estado == "JUEGO":
-            pygame.draw.rect(screen, (50, 200, 50), btn_si, border_radius=12)
-            pygame.draw.rect(screen, (200, 50, 50), btn_no, border_radius=12)
-            screen.blit(font.render("SÍ", True, (255,255,255)), (345, 260))
-            screen.blit(font.render("NO", True, (255,255,255)), (520, 260))
+        if imgs_fijas["cursor"]:
+            screen.blit(imgs_fijas["cursor"], mouse_pos)
 
-    elif estado == "PANTALLA_CIERRE":
-        screen.blit(titulo_font.render("FINAL", True, (255, 215, 0)), (WIDTH//2 - 70, 30))
-        # Si dijo NO, sale el FATALITY
-        img_final = imgs_fijas["meowl"] if resultado_final == "SI" else imgs_fijas["fatality_img"]
-        if img_final: screen.blit(img_final, (WIDTH//2 - 150, 100))
-        
-        pygame.draw.rect(screen, (60, 60, 180), btn_reinicio, border_radius=15)
-        screen.blit(font.render("REINICIAR", True, (255, 255, 255)), (WIDTH//2 - 55, 430))
+        pygame.display.flip()
+        await asyncio.sleep(0) # ESTO ES LO QUE HACE QUE FUNCIONE EN LA WEB
+        clock.tick(60)
 
-    # --- DIBUJAR CURSOR PERSONALIZADO (AL FINAL PARA QUE ESTÉ ENCIMA) ---
-    if imgs_fijas["cursor"]:
-        screen.blit(imgs_fijas["cursor"], mouse_pos)
-
-    pygame.display.flip()
-    pygame.time.Clock().tick(60)
-    
+asyncio.run(main())
