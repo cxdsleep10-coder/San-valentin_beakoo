@@ -5,15 +5,27 @@ async def main():
     pygame.init()
     screen = pygame.display.set_mode((900, 500))
     
-    # Esto usa los archivos que YA TIENES subidos
+    # Cargamos cada cosa por separado para que no se rompa
+    beako = None
+    cedric = None
+    corazon = None
+    
     try:
         beako = pygame.image.load("beako1.png")
+    except: pass
+    
+    try:
         cedric = pygame.image.load("cedric1.png")
+    except: pass
+    
+    try:
         corazon = pygame.image.load("corazon.png")
+    except: pass
+
+    try:
         pygame.mixer.music.load("cancion.mp3")
         pygame.mixer.music.play(-1)
-    except:
-        pass 
+    except: pass
 
     fuente = pygame.font.SysFont("Arial", 35)
 
@@ -23,13 +35,10 @@ async def main():
 
         screen.fill((255, 182, 193)) # Fondo Rosa
         
-        # Poner las fotos que ya subiste
-        try:
-            screen.blit(beako, (50, 100))
-            screen.blit(cedric, (600, 100))
-            screen.blit(corazon, (380, 150))
-        except:
-            pass
+        # Dibujar solo si cargaron
+        if beako: screen.blit(beako, (50, 100))
+        if cedric: screen.blit(cedric, (600, 100))
+        if corazon: screen.blit(corazon, (380, 150))
 
         msg = fuente.render("¡Para Beako! Mira tus archivos cargados", True, (255, 255, 255))
         screen.blit(msg, (220, 400))
